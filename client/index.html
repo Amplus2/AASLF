@@ -8,6 +8,14 @@
     <title>AASLF</title>
 </head>
 <body>
+    <script>
+        function addInput() {
+            const tagText = "<input type=\"text\"></input>";
+            const div = document.createElement('div');
+            div.innerHTML = tagText;
+            document.getElementById("input-rows").appendChild(div);
+        }
+    </script>
     <style>
         header {
             background-color: grey;
@@ -18,7 +26,14 @@
             align-items: center;
         }
         header * { margin: 10px; }
-        header h3 { color: white; }
+        header h2 { color: white; }
+        header .logo {
+            height: 65px;
+            transition-duration: 300ms;
+        }
+        header .logo:hover {
+            height: 80px; filter: grayscale(100%);
+        }
         .main-body {
             margin: 10px;
             background-color: rgb(223, 223, 223);
@@ -26,12 +41,14 @@
         .main-body * { margin: 10px; }
     </style>
     <header>
-        <img src="placeholder.png" height="50"></img>
-        <h3>AASLF</h3>
+        <img class="logo" src="placeholder.png"></img>
+        <h2>AASLF</h2>
         <p>‎</p>
     </header>
     <div class="main-body">
         <p>Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet.</p>
+        <div id="input-rows"></div>
+        <button onclick="addInput()">Add Row</button>
     </div>
 </body>
 </html>
