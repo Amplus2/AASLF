@@ -87,7 +87,7 @@ func main() {
 			fmt.Fprintf(w, "{\"Status\":\"err\",\"Msg\":\"Invalid JSON: "+err.Error()+"\"}")
 		}
 
-		game := Game{Name: req.Game, Players: []Player{Name: req.Player, Session: GeneratePlayerSession()}, ID: GenerateGameID()}
+		game := Game{Name: req.Game, Players: []Player{{Name: req.Player, Session: GeneratePlayerSession()}}, ID: GenerateGameID()}
 
 		games = append(games, game)
 
