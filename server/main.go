@@ -9,7 +9,7 @@ import (
 type Game struct {
 	Players []string
 	Name    string
-	Id      string
+	ID      string
 }
 
 func main() {
@@ -21,16 +21,36 @@ func main() {
 			fmt.Fprintf(w, "This is an API based on POST-requests.")
 		}
 
-		var nr struct {
+		var req struct {
 			Game   string
 			Player string
 		}
 
-		json.NewDecoder(r.Body).Decode(&nr)
+		err := json.NewDecoder(r.Body).Decode(&req)
 
-		game := Game{Name: nr.Game, Players: []string{nr.Player}}
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			//TODO: json
+			fmt.Fprintf(w, "Can't parse your JSON.")
+		}
+
+		game := Game{Name: req.Game, Players: []string{req.Player}, ID: "TODO"}
 
 		games = append(games, game)
+
+		var res struct {
+			Status string
+			ID     string
+		}
+		res.Status = "ok"
+		res.ID = "TODO"
+
+		err = json.NewEncoder(w).Encode(res)
+
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprintf(w, "Can't even encode JSON.")
+		}
 	})
 
 	http.HandleFunc("/join", func(w http.ResponseWriter, r *http.Request) {
@@ -39,12 +59,18 @@ func main() {
 			fmt.Fprintf(w, "This is an API based on POST-requests.")
 		}
 
-		var jr struct {
+		var req struct {
 			Game   string
 			Player string
 		}
 
-		json.NewDecoder(r.Body).Decode(&jr)
+		err := json.NewDecoder(r.Body).Decode(&req)
+
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			//TODO: json
+			fmt.Fprintf(w, "Can't parse your JSON.")
+		}
 
 		//TODO: do it
 	})
@@ -58,4 +84,6 @@ func main() {
 	http.HandleFunc("/vote", func(w http.ResponseWriter, r *http.Request) {})
 
 	http.HandleFunc("/status", func(w http.ResponseWriter, r *http.Request) {})
+
+	http.ListenAndServe(":1312", nil)
 }
