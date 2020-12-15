@@ -41,6 +41,7 @@ func main() {
 		var res struct {
 			Status string
 			ID     string
+			//TODO: session
 		}
 		res.Status = "ok"
 		res.ID = "TODO"
@@ -72,7 +73,35 @@ func main() {
 			fmt.Fprintf(w, "Can't parse your JSON.")
 		}
 
-		//TODO: do it
+		var game Game
+		var found bool
+		for _, g := range games {
+			if g.ID == req.Game {
+				game = g
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprintf(w, "Can't find the game")
+		}
+
+		game.Players = append(game.Players, req.Player)
+
+		var res struct {
+			Status string
+			//TODO: session
+		}
+		res.Status = "ok"
+
+		err = json.NewEncoder(w).Encode(res)
+
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprintf(w, "Can't even encode JSON.")
+		}
 	})
 
 	http.HandleFunc("/start", func(w http.ResponseWriter, r *http.Request) {})
