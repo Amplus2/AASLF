@@ -6,13 +6,15 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"net/http"
 	"strings"
 	"sync"
+	"time"
 )
 
 type Player struct {
-	Name string
+	Name    string
 	Session string
 }
 
@@ -40,7 +42,7 @@ func GenerateGameID() string {
 }
 
 //TODO: learn how to do random in golang
-func tempRand([]byte b) {
+func tempRand(b []byte) {
 	b[8] = 4
 	b[9] = 5
 	b[10] = 6
@@ -57,11 +59,14 @@ func GeneratePlayerSession() string {
 	binary.BigEndian.PutUint64(arr[:], nonce)
 	nonce++
 	nonceMutex.Unlock()
-	tempRand(arr)
-	return base32.StdEncoding.EncodeToString(sha1.Sum(arr[:]))
+	tempRand(arr[:])
+	var sum = sha1.Sum(arr[:])
+	return base32.StdEncoding.EncodeToString(sum[:])
 }
 
 func main() {
+	rand.Seed(time.Now().UnixNano())
+
 	var games []Game
 
 	http.HandleFunc("/new", func(w http.ResponseWriter, r *http.Request) {
@@ -79,7 +84,7 @@ func main() {
 
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
-			fmt.Fprintf(w, "{\"Status\":\"err\",\"Msg\":\"Invalid JSON: "+err+"\"}")
+			fmt.Fprintf(w, "{\"Status\":\"err\",\"Msg\":\"Invalid JSON: "+err.Error()+"\"}")
 		}
 
 		game := Game{Name: req.Game, Players: []Player{Name: req.Player, Session: GeneratePlayerSession()}, ID: GenerateGameID()}
@@ -87,8 +92,8 @@ func main() {
 		games = append(games, game)
 
 		var res struct {
-			Status string
-			ID     string
+			Status  string
+			ID      string
 			Session string
 		}
 		res.Status = "ok"
@@ -99,7 +104,7 @@ func main() {
 
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprintf(w, "{\"Status\":\"err\",\"Msg\":\"Cannot encode JSON: "+err+"\"}")
+			fmt.Fprintf(w, "{\"Status\":\"err\",\"Msg\":\"Cannot encode JSON: "+err.Error()+"\"}")
 		}
 	})
 
@@ -118,7 +123,7 @@ func main() {
 
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
-			fmt.Fprintf(w, "{\"Status\":\"err\",\"Msg\":\"Invalid JSON: "+err+"\"}")
+			fmt.Fprintf(w, "{\"Status\":\"err\",\"Msg\":\"Invalid JSON: "+err.Error()+"\"}")
 		}
 
 		var game Game
@@ -140,7 +145,7 @@ func main() {
 		game.Players = append(game.Players, Player{Name: req.Player, Session: session})
 
 		var res struct {
-			Status string
+			Status  string
 			Session string
 		}
 		res.Status = "ok"
@@ -150,7 +155,7 @@ func main() {
 
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprintf(w, "{\"Status\":\"err\",\"Msg\":\"Cannot encode JSON: "+err+"\"}")
+			fmt.Fprintf(w, "{\"Status\":\"err\",\"Msg\":\"Cannot encode JSON: "+err.Error()+"\"}")
 		}
 	})
 
