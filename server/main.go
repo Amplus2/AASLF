@@ -1,48 +1,61 @@
 package main
 
 import (
-    "fmt"
-    "net/http"
-    "encoding/json"
-    "container/list"
+	"encoding/json"
+	"fmt"
+	"net/http"
 )
 
 type Game struct {
-    Players *list.List
-    Name string
-    Id string
+	Players []string
+	Name    string
+	Id      string
 }
 
 func main() {
-    var games = list.New()
+	var games []Game
 
-    http.HandleFunc("/new", func(w http.ResponseWriter, r *http.Request) {
-        if r.Method != http.MethodPost {
-            w.WriteHeader(http.StatusBadRequest)
-            fmt.Fprintf(w, "This is an API based on POST-requests.")
-        }
+	http.HandleFunc("/new", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprintf(w, "This is an API based on POST-requests.")
+		}
 
-        var nr struct {
-            Game string
-            Player string
-        }
+		var nr struct {
+			Game   string
+			Player string
+		}
 
-        json.NewDecoder(r.Body).Decode(&nr)
+		json.NewDecoder(r.Body).Decode(&nr)
 
-        game := games.PushBack(Game{Name: nr.Game, Players: list.New()}).Value
+		game := Game{Name: nr.Game, Players: []string{nr.Player}}
 
-        game.Players.PushBack(nr.Player)
-    })
+		games = append(games, game)
+	})
 
-    http.HandleFunc("/join", func(w http.ResponseWriter, r *http.Request) {})
+	http.HandleFunc("/join", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprintf(w, "This is an API based on POST-requests.")
+		}
 
-    http.HandleFunc("/start", func(w http.ResponseWriter, r *http.Request) {})
+		var jr struct {
+			Game   string
+			Player string
+		}
 
-    http.HandleFunc("/stop", func(w http.ResponseWriter, r *http.Request) {})
+		json.NewDecoder(r.Body).Decode(&jr)
 
-    http.HandleFunc("/submit", func(w http.ResponseWriter, r *http.Request) {})
+		//TODO: do it
+	})
 
-    http.HandleFunc("/vote", func(w http.ResponseWriter, r *http.Request) {})
+	http.HandleFunc("/start", func(w http.ResponseWriter, r *http.Request) {})
 
-    http.HandleFunc("/status", func(w http.ResponseWriter, r *http.Request) {})
+	http.HandleFunc("/stop", func(w http.ResponseWriter, r *http.Request) {})
+
+	http.HandleFunc("/submit", func(w http.ResponseWriter, r *http.Request) {})
+
+	http.HandleFunc("/vote", func(w http.ResponseWriter, r *http.Request) {})
+
+	http.HandleFunc("/status", func(w http.ResponseWriter, r *http.Request) {})
 }
