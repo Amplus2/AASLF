@@ -16,6 +16,7 @@ import (
 type Player struct {
 	Name    string
 	Session string
+	Admin   bool
 }
 
 type Game struct {
@@ -76,7 +77,7 @@ func main() {
 			fmt.Fprintf(w, "{\"Status\":\"err\",\"Msg\":\"Invalid JSON: "+err.Error()+"\"}")
 		}
 
-		game := Game{Name: req.Game, Players: []Player{{Name: req.Player, Session: GeneratePlayerSession()}}, ID: GenerateGameID()}
+		game := Game{Name: req.Game, Players: []Player{{Name: req.Player, Session: GeneratePlayerSession(), Admin: true}}, ID: GenerateGameID()}
 
 		games = append(games, game)
 
@@ -149,7 +150,72 @@ func main() {
 	})
 
 	http.HandleFunc("/start", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprintf(w, "This is an API based on POST-requests.")
+		}
 
+		var req struct {
+			Game    string
+			Player  string
+			Session string
+		}
+
+		err := json.NewDecoder(r.Body).Decode(&req)
+
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprintf(w, "{\"Status\":\"err\",\"Msg\":\"Invalid JSON: "+err.Error()+"\"}")
+		}
+
+		var game Game
+		var found bool
+		for _, g := range games {
+			if g.ID == req.Game {
+				game = g
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprintf(w, "{\"Status\":\"err\",\"Msg\":\"Game not found.\"}")
+		}
+
+		var player Player
+		found = false
+		for _, p := range game.Players {
+			if p.Name == req.Player {
+				player = p
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprintf(w, "{\"Status\":\"err\",\"Msg\":\"Player not found.\"}")
+		}
+
+		if player.Session != req.Session {
+			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprintf(w, "{\"Status\":\"err\",\"Msg\":\"Invalid session.\"}")
+		}
+
+		if !player.Admin {
+			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprintf(w, "{\"Status\":\"err\",\"Msg\":\"No permission.\"}")
+		}
+
+		if game.Running {
+			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprintf(w, "{\"Status\":\"err\",\"Msg\":\"That game is already running.\"}")
+		}
+
+		game.Running = true
+
+		//TODO: rest
 	})
 
 	http.HandleFunc("/stop", func(w http.ResponseWriter, r *http.Request) {})
