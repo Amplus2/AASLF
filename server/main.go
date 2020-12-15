@@ -11,10 +11,16 @@ import (
 	"sync"
 )
 
+type Player struct {
+	Name string
+	Session string
+}
+
 type Game struct {
-	Players []string
+	Players []Player
 	Name    string
 	ID      string
+	Running bool
 }
 
 //not a nonce like in aes ctr,
@@ -33,7 +39,27 @@ func GenerateGameID() string {
 	return strings.ToUpper(base32.StdEncoding.EncodeToString(sum[:5]))
 }
 
-//TODO: generate session
+//TODO: learn how to do random in golang
+func tempRand([]byte b) {
+	b[8] = 4
+	b[9] = 5
+	b[10] = 6
+	b[11] = 7
+	b[12] = 8
+	b[13] = 9
+	b[14] = 10
+	b[15] = 11
+}
+
+func GeneratePlayerSession() string {
+	nonceMutex.Lock()
+	var arr [16]byte
+	binary.BigEndian.PutUint64(arr[:], nonce)
+	nonce++
+	nonceMutex.Unlock()
+	tempRand(arr)
+	return base32.StdEncoding.EncodeToString(sha1.Sum(arr[:]))
+}
 
 func main() {
 	var games []Game
@@ -41,7 +67,7 @@ func main() {
 	http.HandleFunc("/new", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			w.WriteHeader(http.StatusBadRequest)
-			fmt.Fprintf(w, "This is an API based on POST-requests.")
+			fmt.Fprintf(w, "{\"Status\":\"err\",\"Msg\":\"Use. POST. Requests.\"}")
 		}
 
 		var req struct {
@@ -53,27 +79,27 @@ func main() {
 
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
-			//TODO: json
-			fmt.Fprintf(w, "Can't parse your JSON.")
+			fmt.Fprintf(w, "{\"Status\":\"err\",\"Msg\":\"Invalid JSON: "+err+"\"}")
 		}
 
-		game := Game{Name: req.Game, Players: []string{req.Player}, ID: GenerateGameID()}
+		game := Game{Name: req.Game, Players: []Player{Name: req.Player, Session: GeneratePlayerSession()}, ID: GenerateGameID()}
 
 		games = append(games, game)
 
 		var res struct {
 			Status string
 			ID     string
-			//TODO: session
+			Session string
 		}
 		res.Status = "ok"
-		res.ID = "TODO"
+		res.ID = game.ID
+		res.Session = game.Players[0].Session
 
 		err = json.NewEncoder(w).Encode(res)
 
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprintf(w, "Can't even encode JSON.")
+			fmt.Fprintf(w, "{\"Status\":\"err\",\"Msg\":\"Cannot encode JSON: "+err+"\"}")
 		}
 	})
 
@@ -92,8 +118,7 @@ func main() {
 
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
-			//TODO: json
-			fmt.Fprintf(w, "Can't parse your JSON.")
+			fmt.Fprintf(w, "{\"Status\":\"err\",\"Msg\":\"Invalid JSON: "+err+"\"}")
 		}
 
 		var game Game
@@ -108,26 +133,30 @@ func main() {
 
 		if !found {
 			w.WriteHeader(http.StatusBadRequest)
-			fmt.Fprintf(w, "Can't find the game")
+			fmt.Fprintf(w, "{\"Status\":\"err\",\"Msg\":\"Game not found.\"}")
 		}
 
-		game.Players = append(game.Players, req.Player)
+		session := GeneratePlayerSession()
+		game.Players = append(game.Players, Player{Name: req.Player, Session: session})
 
 		var res struct {
 			Status string
-			//TODO: session
+			Session string
 		}
 		res.Status = "ok"
+		res.Session = session
 
 		err = json.NewEncoder(w).Encode(res)
 
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprintf(w, "Can't even encode JSON.")
+			fmt.Fprintf(w, "{\"Status\":\"err\",\"Msg\":\"Cannot encode JSON: "+err+"\"}")
 		}
 	})
 
-	http.HandleFunc("/start", func(w http.ResponseWriter, r *http.Request) {})
+	http.HandleFunc("/start", func(w http.ResponseWriter, r *http.Request) {
+
+	})
 
 	http.HandleFunc("/stop", func(w http.ResponseWriter, r *http.Request) {})
 
