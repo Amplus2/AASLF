@@ -41,25 +41,14 @@ func GenerateGameID() string {
 	return strings.ToUpper(base32.StdEncoding.EncodeToString(sum[:5]))
 }
 
-//TODO: learn how to do random in golang
-func tempRand(b []byte) {
-	b[8] = 4
-	b[9] = 5
-	b[10] = 6
-	b[11] = 7
-	b[12] = 8
-	b[13] = 9
-	b[14] = 10
-	b[15] = 11
-}
-
+//is like secure, but also obscure
 func GeneratePlayerSession() string {
 	nonceMutex.Lock()
 	var arr [16]byte
 	binary.BigEndian.PutUint64(arr[:], nonce)
 	nonce++
 	nonceMutex.Unlock()
-	tempRand(arr[:])
+	rand.Read(arr[:])
 	var sum = sha1.Sum(arr[:])
 	return base32.StdEncoding.EncodeToString(sum[:])
 }
