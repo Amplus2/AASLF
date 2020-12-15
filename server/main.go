@@ -1,9 +1,14 @@
 package main
 
 import (
+	"crypto/sha1"
+	"encoding/base32"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
+	"sync"
 )
 
 type Game struct {
@@ -11,6 +16,24 @@ type Game struct {
 	Name    string
 	ID      string
 }
+
+//not a nonce like in aes ctr,
+//but a counter used for everything pseudo-random
+var nonce uint64 = 0
+var nonceMutex = &sync.Mutex{}
+
+//maybe this should just be rand, but its fun this way
+func GenerateGameID() string {
+	nonceMutex.Lock()
+	var arr [8]byte
+	binary.BigEndian.PutUint64(arr[:], nonce)
+	nonce++
+	nonceMutex.Unlock()
+	sum := sha1.Sum(arr[:])
+	return strings.ToUpper(base32.StdEncoding.EncodeToString(sum[:5]))
+}
+
+//TODO: generate session
 
 func main() {
 	var games []Game
@@ -34,7 +57,7 @@ func main() {
 			fmt.Fprintf(w, "Can't parse your JSON.")
 		}
 
-		game := Game{Name: req.Game, Players: []string{req.Player}, ID: "TODO"}
+		game := Game{Name: req.Game, Players: []string{req.Player}, ID: GenerateGameID()}
 
 		games = append(games, game)
 
