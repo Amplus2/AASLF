@@ -10,6 +10,7 @@ Key|Value
 ---
 Game|The name for the new game
 Player|Your name
+Categories|All the categories that the new game should have
 ### Response
 Key|Value
 ---

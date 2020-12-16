@@ -107,6 +107,7 @@ func main() {
 		var req struct {
 			Game   string
 			Player string
+			// TODO: Categories
 		}
 
 		err := json.NewDecoder(r.Body).Decode(&req)
