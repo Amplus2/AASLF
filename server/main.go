@@ -1,16 +1,12 @@
 package main
 
 import (
-	"crypto/sha1"
+	"crypto/rand"
 	"encoding/base32"
-	"encoding/binary"
 	"encoding/json"
 	"fmt"
-	"math/rand"
 	"net/http"
 	"strings"
-	"sync"
-	"time"
 )
 
 type Player struct {
@@ -29,32 +25,18 @@ type Game struct {
 
 var games []Game
 
-//not a nonce like in aes ctr,
-//but a counter used for everything pseudo-random
-var nonce uint64 = 0
-var nonceMutex = &sync.Mutex{}
-
-//maybe this should just be rand, but its fun this way
 func GenerateGameID() string {
-	nonceMutex.Lock()
-	var arr [8]byte
-	binary.BigEndian.PutUint64(arr[:], nonce)
-	nonce++
-	nonceMutex.Unlock()
-	sum := sha1.Sum(arr[:])
-	return strings.ToUpper(base32.StdEncoding.EncodeToString(sum[:5]))
+	var arr [5]byte
+	//TODO: err handling for this
+	rand.Read(arr[:])
+	return strings.ToUpper(base32.StdEncoding.EncodeToString(arr[:]))
 }
 
-//is like secure, but also obscure
 func GeneratePlayerSession() string {
-	nonceMutex.Lock()
-	var arr [16]byte
-	binary.BigEndian.PutUint64(arr[:], nonce)
-	nonce++
-	nonceMutex.Unlock()
+	var arr [20]byte
+	//TODO: err handling for this
 	rand.Read(arr[:])
-	var sum = sha1.Sum(arr[:])
-	return base32.StdEncoding.EncodeToString(sum[:])
+	return base32.StdEncoding.EncodeToString(arr[:])
 }
 
 func BadHttpRequest(w http.ResponseWriter, msg string) {
@@ -116,8 +98,6 @@ func SearchPlayer(game Game, name string, session string) (Player, bool, bool) {
 }
 
 func main() {
-	rand.Seed(time.Now().UnixNano())
-
 	http.HandleFunc("/new", func(w http.ResponseWriter, r *http.Request) {
 		var req struct {
 			Game       string
