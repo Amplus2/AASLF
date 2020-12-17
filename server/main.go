@@ -20,11 +20,14 @@ type Player struct {
 }
 
 type Game struct {
-	Players []Player
-	Name    string
-	ID      string
-	Running bool
+	Players    []Player
+	Name       string
+	Categories []string
+	ID         string
+	Running    bool
 }
+
+var games []Game
 
 //not a nonce like in aes ctr,
 //but a counter used for everything pseudo-random
@@ -54,30 +57,61 @@ func GeneratePlayerSession() string {
 	return base32.StdEncoding.EncodeToString(sum[:])
 }
 
+func BeginHttpHandler(w http.ResponseWriter, r *http.Request, req interface{}) bool {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "{\"Status\":\"err\",\"Msg\":\"Use. POST. Requests.\"}")
+		return true
+	}
+
+	err := json.NewDecoder(r.Body).Decode(req)
+
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "{\"Status\":\"err\",\"Msg\":\"Invalid JSON: "+err.Error()+"\"}")
+		return true
+	}
+
+	return false
+}
+
+func EndHttpHandler(w http.ResponseWriter, res interface{}) {
+	err := json.NewEncoder(w).Encode(res)
+
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(w, "{\"Status\":\"err\",\"Msg\":\"Cannot encode JSON: "+err.Error()+"\"}")
+	}
+}
+
+func SearchGame(id string) (Game, bool) {
+	var game Game
+	var found bool
+	for _, g := range games {
+		if g.ID == id {
+			game = g
+			found = true
+			break
+		}
+	}
+	return game, found
+}
+
 func main() {
 	rand.Seed(time.Now().UnixNano())
 
-	var games []Game
-
 	http.HandleFunc("/new", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			w.WriteHeader(http.StatusBadRequest)
-			fmt.Fprintf(w, "{\"Status\":\"err\",\"Msg\":\"Use. POST. Requests.\"}")
-		}
-
 		var req struct {
-			Game   string
-			Player string
+			Game       string
+			Player     string
+			Categories []string
 		}
 
-		err := json.NewDecoder(r.Body).Decode(&req)
-
-		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			fmt.Fprintf(w, "{\"Status\":\"err\",\"Msg\":\"Invalid JSON: "+err.Error()+"\"}")
+		if BeginHttpHandler(w, r, &req) {
+			return
 		}
 
-		game := Game{Name: req.Game, Players: []Player{{Name: req.Player, Session: GeneratePlayerSession(), Admin: true}}, ID: GenerateGameID()}
+		game := Game{Name: req.Game, Players: []Player{{Name: req.Player, Session: GeneratePlayerSession(), Admin: true}}, ID: GenerateGameID(), Categories: req.Categories}
 
 		games = append(games, game)
 
@@ -90,42 +124,20 @@ func main() {
 		res.ID = game.ID
 		res.Session = game.Players[0].Session
 
-		err = json.NewEncoder(w).Encode(res)
-
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprintf(w, "{\"Status\":\"err\",\"Msg\":\"Cannot encode JSON: "+err.Error()+"\"}")
-		}
+		EndHttpHandler(w, res)
 	})
 
 	http.HandleFunc("/join", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			w.WriteHeader(http.StatusBadRequest)
-			fmt.Fprintf(w, "This is an API based on POST-requests.")
-		}
-
 		var req struct {
 			Game   string
 			Player string
-			// TODO: Categories
 		}
 
-		err := json.NewDecoder(r.Body).Decode(&req)
-
-		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			fmt.Fprintf(w, "{\"Status\":\"err\",\"Msg\":\"Invalid JSON: "+err.Error()+"\"}")
+		if BeginHttpHandler(w, r, &req) {
+			return
 		}
 
-		var game Game
-		var found bool
-		for _, g := range games {
-			if g.ID == req.Game {
-				game = g
-				found = true
-				break
-			}
-		}
+		game, found := SearchGame(req.Game)
 
 		if !found {
 			w.WriteHeader(http.StatusBadRequest)
@@ -142,42 +154,21 @@ func main() {
 		res.Status = "ok"
 		res.Session = session
 
-		err = json.NewEncoder(w).Encode(res)
-
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprintf(w, "{\"Status\":\"err\",\"Msg\":\"Cannot encode JSON: "+err.Error()+"\"}")
-		}
+		EndHttpHandler(w, res)
 	})
 
 	http.HandleFunc("/start", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			w.WriteHeader(http.StatusBadRequest)
-			fmt.Fprintf(w, "This is an API based on POST-requests.")
-		}
-
 		var req struct {
 			Game    string
 			Player  string
 			Session string
 		}
 
-		err := json.NewDecoder(r.Body).Decode(&req)
-
-		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			fmt.Fprintf(w, "{\"Status\":\"err\",\"Msg\":\"Invalid JSON: "+err.Error()+"\"}")
+		if BeginHttpHandler(w, r, &req) {
+			return
 		}
 
-		var game Game
-		var found bool
-		for _, g := range games {
-			if g.ID == req.Game {
-				game = g
-				found = true
-				break
-			}
-		}
+		game, found := SearchGame(req.Game)
 
 		if !found {
 			w.WriteHeader(http.StatusBadRequest)
@@ -216,7 +207,12 @@ func main() {
 
 		game.Running = true
 
-		//TODO: rest
+		var res struct {
+			Status string
+		}
+		res.Status = "ok"
+
+		EndHttpHandler(w, res)
 	})
 
 	http.HandleFunc("/stop", func(w http.ResponseWriter, r *http.Request) {})
