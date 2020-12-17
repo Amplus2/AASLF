@@ -9,10 +9,24 @@ Creates a new game.
 Key|Value
 ---
 Game|The name for the new game
-Player|Your name
+Player|The user's name
 Categories|All the categories that the new game should have
 ### Response
 Key|Value
 ---
-Status|0 if it worked, anything else, if not
+Status|"ok" if it worked, "err", if not
 ID|The ID of the newly created game
+Session|The user's session
+
+## "/join"
+Joins an existing game.
+### Request
+Key|Value
+---
+Game|The game's ID
+Player|The user's name
+### Response
+Key|Value
+---
+Status|"ok" if it worked, "err", if not
+Session|The user's session
