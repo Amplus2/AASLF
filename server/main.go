@@ -57,18 +57,21 @@ func GeneratePlayerSession() string {
 	return base32.StdEncoding.EncodeToString(sum[:])
 }
 
+func BadHttpRequest(w http.ResponseWriter, msg string) {
+	w.WriteHeader(http.StatusBadRequest)
+	fmt.Fprintln(w, msg)
+}
+
 func BeginHttpHandler(w http.ResponseWriter, r *http.Request, req interface{}) bool {
 	if r.Method != http.MethodPost {
-		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(w, "{\"Status\":\"err\",\"Msg\":\"Use. POST. Requests.\"}")
+		BadHttpRequest(w, "{\"Status\":\"err\",\"Msg\":\"Use. POST. Requests.\"}")
 		return true
 	}
 
 	err := json.NewDecoder(r.Body).Decode(req)
 
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(w, "{\"Status\":\"err\",\"Msg\":\"Invalid JSON: "+err.Error()+"\"}")
+		BadHttpRequest(w, "{\"Status\":\"err\",\"Msg\":\"Invalid JSON: "+err.Error()+"\"}")
 		return true
 	}
 
@@ -95,6 +98,21 @@ func SearchGame(id string) (Game, bool) {
 		}
 	}
 	return game, found
+}
+
+func SearchPlayer(game Game, name string, session string) (Player, bool, bool) {
+	var player Player
+	found := false
+	valid := false
+	for _, p := range game.Players {
+		if p.Name == name {
+			player = p
+			found = true
+			valid = p.Session == session
+			break
+		}
+	}
+	return player, found, valid
 }
 
 func main() {
@@ -140,8 +158,8 @@ func main() {
 		game, found := SearchGame(req.Game)
 
 		if !found {
-			w.WriteHeader(http.StatusBadRequest)
-			fmt.Fprintf(w, "{\"Status\":\"err\",\"Msg\":\"Game not found.\"}")
+			BadHttpRequest(w, "{\"Status\":\"err\",\"Msg\":\"Game not found.\"}")
+			return
 		}
 
 		session := GeneratePlayerSession()
@@ -171,38 +189,32 @@ func main() {
 		game, found := SearchGame(req.Game)
 
 		if !found {
-			w.WriteHeader(http.StatusBadRequest)
-			fmt.Fprintf(w, "{\"Status\":\"err\",\"Msg\":\"Game not found.\"}")
+			BadHttpRequest(w, "{\"Status\":\"err\",\"Msg\":\"Game not found.\"}")
+			return
 		}
 
 		var player Player
-		found = false
-		for _, p := range game.Players {
-			if p.Name == req.Player {
-				player = p
-				found = true
-				break
-			}
-		}
+		var valid bool
+		player, found, valid = SearchPlayer(game, req.Player, req.Session)
 
 		if !found {
-			w.WriteHeader(http.StatusBadRequest)
-			fmt.Fprintf(w, "{\"Status\":\"err\",\"Msg\":\"Player not found.\"}")
+			BadHttpRequest(w, "{\"Status\":\"err\",\"Msg\":\"Player not found.\"}")
+			return
 		}
 
-		if player.Session != req.Session {
-			w.WriteHeader(http.StatusBadRequest)
-			fmt.Fprintf(w, "{\"Status\":\"err\",\"Msg\":\"Invalid session.\"}")
+		if !valid {
+			BadHttpRequest(w, "{\"Status\":\"err\",\"Msg\":\"Invalid session.\"}")
+			return
 		}
 
 		if !player.Admin {
-			w.WriteHeader(http.StatusBadRequest)
-			fmt.Fprintf(w, "{\"Status\":\"err\",\"Msg\":\"No permission.\"}")
+			BadHttpRequest(w, "{\"Status\":\"err\",\"Msg\":\"No permission.\"}")
+			return
 		}
 
 		if game.Running {
-			w.WriteHeader(http.StatusBadRequest)
-			fmt.Fprintf(w, "{\"Status\":\"err\",\"Msg\":\"That game is already running.\"}")
+			BadHttpRequest(w, "{\"Status\":\"err\",\"Msg\":\"That game is already running.\"}")
+			return
 		}
 
 		game.Running = true
