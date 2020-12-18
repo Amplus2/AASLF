@@ -98,7 +98,7 @@ func SearchPlayer(game Game, name string, session string) (Player, bool, bool) {
 }
 
 func main() {
-	http.HandleFunc("/new", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/v1/new", func(w http.ResponseWriter, r *http.Request) {
 		var req struct {
 			Game       string
 			Player     string
@@ -125,7 +125,7 @@ func main() {
 		EndHttpHandler(w, res)
 	})
 
-	http.HandleFunc("/join", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/v1/join", func(w http.ResponseWriter, r *http.Request) {
 		var req struct {
 			Game   string
 			Player string
@@ -155,7 +155,7 @@ func main() {
 		EndHttpHandler(w, res)
 	})
 
-	http.HandleFunc("/start", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/v1/start", func(w http.ResponseWriter, r *http.Request) {
 		var req struct {
 			Game    string
 			Player  string
@@ -207,13 +207,13 @@ func main() {
 		EndHttpHandler(w, res)
 	})
 
-	http.HandleFunc("/stop", func(w http.ResponseWriter, r *http.Request) {})
+	http.HandleFunc("/v1/stop", func(w http.ResponseWriter, r *http.Request) {})
 
-	http.HandleFunc("/submit", func(w http.ResponseWriter, r *http.Request) {})
+	http.HandleFunc("/v1/submit", func(w http.ResponseWriter, r *http.Request) {})
 
-	http.HandleFunc("/vote", func(w http.ResponseWriter, r *http.Request) {})
+	http.HandleFunc("/v1/vote", func(w http.ResponseWriter, r *http.Request) {})
 
-	http.HandleFunc("/status", func(w http.ResponseWriter, r *http.Request) {})
+	http.HandleFunc("/v1/status", func(w http.ResponseWriter, r *http.Request) {})
 
 	http.ListenAndServe(":1312", nil)
 }

@@ -1,4 +1,4 @@
-# The AASLF REST-API
+# The AASLF REST-API v1
 The AASLF REST-API uses HTTP on port 1312 to allow your browser to
 communicate with the server using JSON. This document describes all of
 the used requests.
