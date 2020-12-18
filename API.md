@@ -30,3 +30,29 @@ Key|Value
 ---|---
 Status|"ok" if it worked, "err", if not
 Session|The user's session
+
+## "/start"
+Starts a game.
+### Request
+Key|Value
+---|---
+Game|The game's ID
+Player|The user's name
+Session|The user's session
+### Response
+Key|Value
+---|---
+Status|"ok" if it worked, "err", if not
+
+## "/stop"
+Tells everyone to stop.
+### Request
+Key|Value
+---|---
+Game|The game's ID
+Player|The user's name
+Session|The user's session
+### Response
+Key|Value
+---|---
+Status|"ok" if it worked, "err", if not
