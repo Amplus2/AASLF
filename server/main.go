@@ -9,20 +9,20 @@ import (
 	"strings"
 )
 
-type Player struct {
+type player struct {
 	Name  string
 	Admin bool
 }
 
-type Game struct {
-	Players    []Player
+type game struct {
+	Players    []player
 	Name       string
 	Categories []string
 	ID         string
 	Running    bool
 }
 
-var games []Game
+var games []game
 var sessions map[string]map[string]string
 
 func GenerateGameID() string {
@@ -39,21 +39,25 @@ func GeneratePlayerSession() string {
 	return base32.StdEncoding.EncodeToString(arr[:])
 }
 
-func BadHttpRequest(w http.ResponseWriter, msg string) {
+func HttpBadRequest(w http.ResponseWriter, msg string) {
+	HttpError(w, http.StatusBadRequest, msg)
+}
+
+func HttpError(w http.ResponseWriter, status int, msg string) {
 	w.WriteHeader(http.StatusBadRequest)
-	fmt.Fprintln(w, msg)
+	fmt.Fprintf(w, "{\"Status\":\"err\",\"Msg\":\"%s\"}\n", msg)
 }
 
 func BeginPostHandler(w http.ResponseWriter, r *http.Request, req interface{}) bool {
 	if r.Method != http.MethodPost {
-		BadHttpRequest(w, "{\"Status\":\"err\",\"Msg\":\"Use. POST. Requests.\"}")
+		HttpBadRequest(w, "Use. POST. Requests.")
 		return true
 	}
 
 	err := json.NewDecoder(r.Body).Decode(req)
 
 	if err != nil {
-		BadHttpRequest(w, "{\"Status\":\"err\",\"Msg\":\"Invalid JSON: "+err.Error()+"\"}")
+		HttpBadRequest(w, "Invalid JSON: "+err.Error())
 		return true
 	}
 
@@ -64,13 +68,12 @@ func EndHttpHandler(w http.ResponseWriter, res interface{}) {
 	err := json.NewEncoder(w).Encode(res)
 
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "{\"Status\":\"err\",\"Msg\":\"Cannot encode JSON: "+err.Error()+"\"}")
+		HttpError(w, http.StatusInternalServerError, "Cannot encode JSON: "+err.Error())
 	}
 }
 
-func SearchGame(id string) (Game, bool) {
-	var game Game
+func SearchGame(id string) (game, bool) {
+	var game game
 	var found bool
 	for _, g := range games {
 		if g.ID == id {
@@ -82,8 +85,8 @@ func SearchGame(id string) (Game, bool) {
 	return game, found
 }
 
-func SearchPlayer(game Game, name string, session string) (Player, bool, bool) {
-	var player Player
+func SearchPlayer(game game, name string, session string) (player, bool, bool) {
+	var player player
 	found := false
 	valid := false
 	for _, p := range game.Players {
@@ -109,7 +112,7 @@ func main() {
 			return
 		}
 
-		game := Game{Name: req.Game, Players: []Player{{Name: req.Player, Admin: true}}, ID: GenerateGameID(), Categories: req.Categories}
+		game := game{Name: req.Game, Players: []player{{Name: req.Player, Admin: true}}, ID: GenerateGameID(), Categories: req.Categories}
 		games = append(games, game)
 		sessions[game.ID][req.Player] = GeneratePlayerSession()
 
@@ -138,18 +141,18 @@ func main() {
 		game, found := SearchGame(req.Game)
 
 		if !found {
-			BadHttpRequest(w, "{\"Status\":\"err\",\"Msg\":\"Game not found.\"}")
+			HttpBadRequest(w, "Game not found.")
 			return
 		}
 
 		_, playerAlreadyExists, _ := SearchPlayer(game, req.Player, "")
 
 		if playerAlreadyExists {
-			BadHttpRequest(w, "{\"Status\":\"err\",\"Msg\":\"That player name is already used.\"}")
+			HttpBadRequest(w, "That player name is already in use.")
 			return
 		}
 
-		game.Players = append(game.Players, Player{Name: req.Player})
+		game.Players = append(game.Players, player{Name: req.Player})
 		sessions[game.ID][req.Player] = GeneratePlayerSession()
 
 		var res struct {
@@ -176,31 +179,31 @@ func main() {
 		game, found := SearchGame(req.Game)
 
 		if !found {
-			BadHttpRequest(w, "{\"Status\":\"err\",\"Msg\":\"Game not found.\"}")
+			HttpBadRequest(w, "Game not found.")
 			return
 		}
 
-		var player Player
+		var player player
 		var valid bool
 		player, found, valid = SearchPlayer(game, req.Player, req.Session)
 
 		if !found {
-			BadHttpRequest(w, "{\"Status\":\"err\",\"Msg\":\"Player not found.\"}")
+			HttpBadRequest(w, "Player not found.")
 			return
 		}
 
 		if !valid {
-			BadHttpRequest(w, "{\"Status\":\"err\",\"Msg\":\"Invalid session.\"}")
+			HttpBadRequest(w, "Invalid session.")
 			return
 		}
 
 		if !player.Admin {
-			BadHttpRequest(w, "{\"Status\":\"err\",\"Msg\":\"No permission.\"}")
+			HttpBadRequest(w, "No permission.")
 			return
 		}
 
 		if game.Running {
-			BadHttpRequest(w, "{\"Status\":\"err\",\"Msg\":\"That game is already running.\"}")
+			HttpBadRequest(w, "That game is already running.")
 			return
 		}
 
@@ -222,13 +225,13 @@ func main() {
 
 	http.HandleFunc("/v1/status", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
-			BadHttpRequest(w, "{\"Status\":\"err\",\"Msg\":\"This is a GET endpoint.\"}")
+			HttpBadRequest(w, "This is a GET endpoint.")
 			return
 		}
 
 		var res struct {
 			Status string
-			Games  []Game
+			Games  []game
 		}
 		res.Status = "ok"
 		res.Games = games
