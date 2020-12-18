@@ -10,9 +10,8 @@ import (
 )
 
 type Player struct {
-	Name    string
-	Session string
-	Admin   bool
+	Name  string
+	Admin bool
 }
 
 type Game struct {
@@ -24,6 +23,7 @@ type Game struct {
 }
 
 var games []Game
+var sessions map[string]map[string]string
 
 func GenerateGameID() string {
 	var arr [5]byte
@@ -44,7 +44,7 @@ func BadHttpRequest(w http.ResponseWriter, msg string) {
 	fmt.Fprintln(w, msg)
 }
 
-func BeginHttpHandler(w http.ResponseWriter, r *http.Request, req interface{}) bool {
+func BeginPostHandler(w http.ResponseWriter, r *http.Request, req interface{}) bool {
 	if r.Method != http.MethodPost {
 		BadHttpRequest(w, "{\"Status\":\"err\",\"Msg\":\"Use. POST. Requests.\"}")
 		return true
@@ -90,7 +90,7 @@ func SearchPlayer(game Game, name string, session string) (Player, bool, bool) {
 		if p.Name == name {
 			player = p
 			found = true
-			valid = p.Session == session
+			valid = sessions[game.ID][p.Name] == session
 			break
 		}
 	}
@@ -105,13 +105,13 @@ func main() {
 			Categories []string
 		}
 
-		if BeginHttpHandler(w, r, &req) {
+		if BeginPostHandler(w, r, &req) {
 			return
 		}
 
-		game := Game{Name: req.Game, Players: []Player{{Name: req.Player, Session: GeneratePlayerSession(), Admin: true}}, ID: GenerateGameID(), Categories: req.Categories}
-
+		game := Game{Name: req.Game, Players: []Player{{Name: req.Player, Admin: true}}, ID: GenerateGameID(), Categories: req.Categories}
 		games = append(games, game)
+		sessions[game.ID][req.Player] = GeneratePlayerSession()
 
 		var res struct {
 			Status  string
@@ -120,7 +120,7 @@ func main() {
 		}
 		res.Status = "ok"
 		res.ID = game.ID
-		res.Session = game.Players[0].Session
+		res.Session = sessions[game.ID][req.Player]
 
 		EndHttpHandler(w, res)
 	})
@@ -131,7 +131,7 @@ func main() {
 			Player string
 		}
 
-		if BeginHttpHandler(w, r, &req) {
+		if BeginPostHandler(w, r, &req) {
 			return
 		}
 
@@ -142,15 +142,22 @@ func main() {
 			return
 		}
 
-		session := GeneratePlayerSession()
-		game.Players = append(game.Players, Player{Name: req.Player, Session: session})
+		_, playerAlreadyExists, _ := SearchPlayer(game, req.Player, "")
+
+		if playerAlreadyExists {
+			BadHttpRequest(w, "{\"Status\":\"err\",\"Msg\":\"That player name is already used.\"}")
+			return
+		}
+
+		game.Players = append(game.Players, Player{Name: req.Player})
+		sessions[game.ID][req.Player] = GeneratePlayerSession()
 
 		var res struct {
 			Status  string
 			Session string
 		}
 		res.Status = "ok"
-		res.Session = session
+		res.Session = sessions[game.ID][req.Player]
 
 		EndHttpHandler(w, res)
 	})
@@ -162,7 +169,7 @@ func main() {
 			Session string
 		}
 
-		if BeginHttpHandler(w, r, &req) {
+		if BeginPostHandler(w, r, &req) {
 			return
 		}
 
@@ -213,7 +220,21 @@ func main() {
 
 	http.HandleFunc("/v1/vote", func(w http.ResponseWriter, r *http.Request) {})
 
-	http.HandleFunc("/v1/status", func(w http.ResponseWriter, r *http.Request) {})
+	http.HandleFunc("/v1/status", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			BadHttpRequest(w, "{\"Status\":\"err\",\"Msg\":\"This is a GET endpoint.\"}")
+			return
+		}
+
+		var res struct {
+			Status string
+			Games  []Game
+		}
+		res.Status = "ok"
+		res.Games = games
+
+		EndHttpHandler(w, res)
+	})
 
 	http.ListenAndServe(":1312", nil)
 }
