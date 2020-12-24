@@ -9,9 +9,15 @@ import (
 	"strings"
 )
 
+type answer struct {
+	Answer string
+	Votes  map[string]bool
+}
+
 type player struct {
-	Name  string
-	Admin bool
+	Name    string
+	Admin   bool
+	Answers []answer
 }
 
 type gameStatus int
@@ -271,9 +277,61 @@ func main() {
 		endHTTPHandler(w, res)
 	})
 
-	http.HandleFunc("/v1/submit", func(w http.ResponseWriter, r *http.Request) {})
+	http.HandleFunc("/v1/submit", func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			Game    string
+			Player  string
+			Session string
+			Answers []string
+		}
 
-	http.HandleFunc("/v1/vote", func(w http.ResponseWriter, r *http.Request) {})
+		if beginPostHandler(w, r, &req) {
+			return
+		}
+
+		game, found := searchGame(req.Game)
+
+		if !found {
+			httpBadRequest(w, "Game not found.")
+			return
+		}
+
+		var valid bool
+		var player player
+		player, found, valid = searchPlayer(game, req.Player, req.Session)
+
+		if !found {
+			httpBadRequest(w, "Player not found.")
+			return
+		}
+
+		if !valid {
+			httpBadRequest(w, "Invalid session.")
+			return
+		}
+
+		if game.Status != voting {
+			httpBadRequest(w, "Are you sure, you want to do that *now*?")
+			return
+		}
+
+		var answers []answer
+		for _, a := range req.Answers {
+			answers = append(answers, answer{Answer: a})
+		}
+		player.Answers = answers
+
+		var res struct {
+			Status string
+		}
+		res.Status = "ok"
+
+		endHTTPHandler(w, res)
+	})
+
+	http.HandleFunc("/v1/vote", func(w http.ResponseWriter, r *http.Request) {
+		//TODO
+	})
 
 	http.HandleFunc("/v1/status", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
