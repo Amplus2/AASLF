@@ -56,3 +56,17 @@ Session|The user's session
 Key|Value
 ---|---
 Status|"ok" if it worked, "err", if not
+
+## "/submit"
+Submits all the answers.
+### Request
+Key|Value
+---|---
+Game|The game's ID
+Player|The user's name
+Session|The user's session
+Answers|The answers
+### Response
+Key|Value
+---|---
+Status|"ok" if it worked, "err", if not
